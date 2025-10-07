@@ -1,0 +1,157 @@
+// Prisma schema for Kigolasso Backend
+// This is the initial schema - will be expanded as we implement features
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model
+model User {
+  id               String            @id @default(cuid())
+  email            String            @unique
+  name             String
+  phone            String?
+  avatar           String?
+  role             UserRole          @default(PLAYER)
+  isEmailVerified  Boolean           @default(false)
+  passwordHash     String
+  refreshToken     String?
+  
+  // Relationships
+  organizedTeams   Team[]           @relation("TeamOrganizer")
+  teamMemberships  TeamMember[]
+  gameParticipations GameParticipant[]
+  payments         Payment[]
+  
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@map("users")
+}
+
+enum UserRole {
+  PLAYER
+  ORGANIZER
+  ADMIN
+}
+
+// Team model
+model Team {
+  id           String       @id @default(cuid())
+  name         String
+  description  String?
+  photo        String?
+  organizerId  String
+  memberLimit  Int          @default(20)
+  isPrivate    Boolean      @default(false)
+  
+  // Relationships
+  organizer    User         @relation("TeamOrganizer", fields: [organizerId], references: [id], onDelete: Cascade)
+  members      TeamMember[]
+  games        Game[]
+  
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@map("teams")
+}
+
+// Team membership
+model TeamMember {
+  id       String   @id @default(cuid())
+  teamId   String
+  userId   String
+  joinedAt DateTime @default(now())
+  
+  // Relationships
+  team     Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([teamId, userId])
+  @@map("team_members")
+}
+
+// Game model
+model Game {
+  id           String            @id @default(cuid())
+  title        String
+  description  String?
+  teamId       String
+  date         DateTime
+  duration     Int               @default(90) // minutes
+  location     String
+  price        Int               @default(0)  // cents
+  playerLimit  Int               @default(20)
+  status       GameStatus        @default(SCHEDULED)
+  
+  // Relationships
+  team         Team              @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  participants GameParticipant[]
+  payments     Payment[]
+  
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@map("games")
+}
+
+enum GameStatus {
+  SCHEDULED
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+// Game participation
+model GameParticipant {
+  id           String              @id @default(cuid())
+  gameId       String
+  userId       String
+  status       ParticipationStatus @default(PENDING)
+  confirmedAt  DateTime?
+  
+  // Relationships
+  game         Game                @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([gameId, userId])
+  @@map("game_participants")
+}
+
+enum ParticipationStatus {
+  PENDING
+  CONFIRMED
+  DECLINED
+  NO_SHOW
+}
+
+// Payment model
+model Payment {
+  id                     String        @id @default(cuid())
+  gameId                 String
+  userId                 String
+  amount                 Int           // cents
+  status                 PaymentStatus @default(PENDING)
+  stripePaymentIntentId  String?       @unique
+  
+  // Relationships
+  game                   Game          @relation(fields: [gameId], references: [id], onDelete: Restrict)
+  user                   User          @relation(fields: [userId], references: [id], onDelete: Restrict)
+  
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+
+  @@map("payments")
+}
+
+enum PaymentStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+  REFUNDED
+}
