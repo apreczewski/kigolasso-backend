@@ -26,6 +26,7 @@ export interface PaginatedResponse<T> {
   };
 }
 
+/* eslint-disable no-unused-vars */
 // User related types
 export interface User {
   id: string;
