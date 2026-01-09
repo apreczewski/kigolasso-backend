@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
-import { logger } from '@/config/logger';
+import { logger } from '../config/logger';
 
 export interface AppError extends Error {
   statusCode?: number;
@@ -11,7 +11,7 @@ export const errorHandler = (
   error: AppError | ZodError,
   req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ): void => {
   let statusCode = 500;
   let message = 'Internal Server Error';
@@ -42,11 +42,19 @@ export const errorHandler = (
     details = undefined;
   }
 
-  res.status(statusCode).json({
+  const response: Record<string, unknown> = {
     error: message,
-    ...(details && { details }),
-    ...(process.env.NODE_ENV === 'development' && { stack: error.stack }),
-  });
+  };
+
+  if (details) {
+    response.details = details;
+  }
+
+  if (process.env.NODE_ENV === 'development') {
+    response.stack = error.stack;
+  }
+
+  res.status(statusCode).json(response);
 };
 
 export const createError = (message: string, statusCode: number): AppError => {
@@ -57,9 +65,9 @@ export const createError = (message: string, statusCode: number): AppError => {
 };
 
 export const asyncHandler = (
-  fn: (req: Request, res: Response, next: NextFunction) => Promise<unknown>
+  fn: (_req: Request, _res: Response, _next: NextFunction) => Promise<unknown>
 ) => {
-  return (req: Request, res: Response, next: NextFunction): void => {
-    Promise.resolve(fn(req, res, next)).catch(next);
+  return (_req: Request, _res: Response, _next: NextFunction): void => {
+    Promise.resolve(fn(_req, _res, _next)).catch(_next);
   };
 };

@@ -1,5 +1,5 @@
 // Jest setup file for tests
-import { logger } from '@/config/logger';
+import { logger } from '../config/logger';
 
 // Disable logging during tests
 logger.transports.forEach(transport => {
@@ -17,5 +17,6 @@ afterAll(async () => {
 
 // Mock environment variables for tests
 process.env.NODE_ENV = 'test';
-process.env.JWT_SECRET = 'test-jwt-secret';
+process.env.SUPABASE_URL = 'https://test-project.supabase.co';
+process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-role-key';
 process.env.DATABASE_URL = 'postgresql://test:test@localhost:5432/kigolasso_test';
