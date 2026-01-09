@@ -1,26 +1,20 @@
+// Load environment variables FIRST - this must be the very first import
+import './env';
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import dotenv from 'dotenv';
-import rateLimit from 'express-rate-limit';
 
-import { errorHandler } from '@/middleware/errorHandler';
-import { logger } from '@/config/logger';
-import { authRoutes } from '@/routes/auth';
-
-// Load environment variables
-dotenv.config();
+import { errorHandler } from './middleware/errorHandler';
+import { logger } from './config/logger';
+import supabaseAuthRoutes from './routes/supabaseAuth';
+import gamesRoutes from './routes/games';
+import teamsRoutes from './routes/teams';
+import { generalRateLimit } from './middleware/rateLimiting';
 
 const app = express();
 const PORT = process.env.PORT ?? 3000;
 const API_VERSION = process.env.API_VERSION ?? 'v1';
-
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS ?? '900000'), // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS ?? '100'), // limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.',
-});
 
 // Middleware
 app.use(helmet());
@@ -28,7 +22,7 @@ app.use(cors({
   origin: process.env.CORS_ORIGIN?.split(',') ?? ['http://localhost:8081'],
   credentials: true,
 }));
-app.use(limiter);
+app.use(generalRateLimit);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -43,7 +37,9 @@ app.get('/health', (req, res) => {
 });
 
 // API Routes
-app.use(`/api/${API_VERSION}/auth`, authRoutes);
+app.use(`/api/${API_VERSION}/auth`, supabaseAuthRoutes);
+app.use(`/api/${API_VERSION}/games`, gamesRoutes);
+app.use(`/api/${API_VERSION}/teams`, teamsRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {

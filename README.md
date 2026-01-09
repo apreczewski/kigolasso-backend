@@ -7,7 +7,7 @@ Backend Node.js + TypeScript para a plataforma Kigolasso - gestão de peladas am
 ### Prerequisites
 
 - Node.js 18.0+
-- PostgreSQL database
+- Supabase project (or PostgreSQL database)
 - npm ou yarn
 
 ### Installation
@@ -23,13 +23,18 @@ cp .env.example .env
 # Edit .env with your configuration
 ```
 
-3. Setup database:
+3. Setup Supabase:
+   - Create a new project at https://supabase.com
+   - Get your project URL and service role key
+   - Add them to your .env file
+
+4. Setup database (if using local Prisma):
 ```bash
 npm run db:generate
 npm run db:push
 ```
 
-4. Start development server:
+5. Start development server:
 ```bash
 npm run dev
 ```
@@ -67,8 +72,8 @@ src/
 - **Runtime**: Node.js
 - **Language**: TypeScript
 - **Framework**: Express.js
-- **Database**: PostgreSQL with Prisma ORM
-- **Authentication**: JWT
+- **Database**: Supabase (PostgreSQL)
+- **Authentication**: Supabase Auth
 - **Payments**: Stripe
 - **Push Notifications**: Firebase Admin
 - **Validation**: Zod
@@ -113,8 +118,9 @@ npm start
 See `.env.example` for all required environment variables.
 
 Key variables:
-- `DATABASE_URL` - PostgreSQL connection string
-- `JWT_SECRET` - Secret for JWT token signing
+- `SUPABASE_URL` - Your Supabase project URL
+- `SUPABASE_SERVICE_ROLE_KEY` - Supabase service role key
+- `DATABASE_URL` - PostgreSQL connection string (if using local Prisma)
 - `STRIPE_SECRET_KEY` - Stripe API key
 - `FIREBASE_*` - Firebase configuration
 

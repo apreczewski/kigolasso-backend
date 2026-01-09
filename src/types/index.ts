@@ -27,23 +27,24 @@ export interface PaginatedResponse<T> {
 }
 
 /* eslint-disable no-unused-vars */
-// User related types
+// User related types (Supabase Profile)
 export interface User {
   id: string;
   email: string;
-  name: string;
-  phone?: string;
-  avatar?: string;
-  role: UserRole;
-  isEmailVerified: boolean;
-  createdAt: Date;
-  updatedAt: Date;
+  name?: string | null;
+  phone?: string | null;
+  avatar_url?: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
-export enum UserRole {
-  PLAYER = 'PLAYER',
-  ORGANIZER = 'ORGANIZER',
-  ADMIN = 'ADMIN',
+// Extended user for auth context (matches middleware)
+export interface AuthUser {
+  id: string;
+  email: string;
+  name?: string;
+  phone?: string;
+  avatar_url?: string;
 }
 
 // Team related types

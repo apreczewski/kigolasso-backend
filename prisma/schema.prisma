@@ -1,6 +1,3 @@
-// Prisma schema for Kigolasso Backend
-// This is the initial schema - will be expanded as we implement features
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,148 +7,402 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// User model
 model User {
-  id               String            @id @default(cuid())
-  email            String            @unique
-  name             String
-  phone            String?
-  avatar           String?
-  role             UserRole          @default(PLAYER)
-  isEmailVerified  Boolean           @default(false)
-  passwordHash     String
-  refreshToken     String?
-  
-  // Relationships
-  organizedTeams   Team[]           @relation("TeamOrganizer")
-  teamMemberships  TeamMember[]
-  gameParticipations GameParticipant[]
-  payments         Payment[]
-  
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+  id                              String                 @id @default(cuid())
+  email                           String                 @unique
+  password                        String
+  name                            String
+  cpf                             String?                @unique
+  phone                           String?
+  birthDate                       DateTime?
+  avatarUrl                       String?
+  role                            UserRole               @default(PLAYER)
+  onboardingCompleted             Boolean                @default(false)
+  createdAt                       DateTime               @default(now())
+  updatedAt                       DateTime               @updatedAt
+  googleId                        String?                @unique
+  game_players                    game_players[]
+  games                           Game[]
+  offers_offers_fromUserIdTousers offers[]               @relation("offers_fromUserIdTousers")
+  offers_offers_toUserIdTousers   offers[]               @relation("offers_toUserIdTousers")
+  payments                        Payment[]
+  player_profiles                 player_profiles?
+  player_stats_history            player_stats_history[]
+  privacy_settings                privacy_settings?
+  stripe_accounts                 stripe_accounts?
+  teamMemberships                 TeamMember[]
+  teams                           Team[]
 
   @@map("users")
 }
 
-enum UserRole {
-  PLAYER
-  ORGANIZER
-  ADMIN
-}
-
-// Team model
 model Team {
-  id           String       @id @default(cuid())
-  name         String
-  description  String?
-  photo        String?
-  organizerId  String
-  memberLimit  Int          @default(20)
-  isPrivate    Boolean      @default(false)
-  
-  // Relationships
-  organizer    User         @relation("TeamOrganizer", fields: [organizerId], references: [id], onDelete: Cascade)
-  members      TeamMember[]
-  games        Game[]
-  
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id                            String       @id @default(cuid())
+  name                          String
+  logo                          String?
+  description                   String?
+  ownerId                       String
+  totalGamesPlayed              Int          @default(0)
+  gamesWon                      Int          @default(0)
+  gamesDrawn                    Int          @default(0)
+  gamesLost                     Int          @default(0)
+  goalsFor                      Int          @default(0)
+  goalsAgainst                  Int          @default(0)
+  verified                      Boolean      @default(false)
+  featured                      Boolean      @default(false)
+  createdAt                     DateTime     @default(now())
+  updatedAt                     DateTime     @updatedAt
+  games_games_awayTeamIdToteams Game[]       @relation("games_awayTeamIdToteams")
+  games_games_homeTeamIdToteams Game[]       @relation("games_homeTeamIdToteams")
+  offers                        offers[]
+  payments                      Payment[]
+  members                       TeamMember[]
+  users                         User         @relation(fields: [ownerId], references: [id])
 
   @@map("teams")
 }
 
-// Team membership
 model TeamMember {
-  id       String   @id @default(cuid())
-  teamId   String
-  userId   String
-  joinedAt DateTime @default(now())
-  
-  // Relationships
-  team     Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id        String          @id @default(cuid())
+  teamId    String
+  userId    String
+  number    Int?
+  position  PlayerPosition?
+  isCaptain Boolean         @default(false)
+  status    String          @default("active")
+  joinedAt  DateTime        @default(now())
+  updatedAt DateTime
+  team      Team            @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([teamId, userId])
+  @@unique([teamId, number])
   @@map("team_members")
 }
 
-// Game model
 model Game {
-  id           String            @id @default(cuid())
-  title        String
-  description  String?
-  teamId       String
-  date         DateTime
-  duration     Int               @default(90) // minutes
-  location     String
-  price        Int               @default(0)  // cents
-  playerLimit  Int               @default(20)
-  status       GameStatus        @default(SCHEDULED)
-  
-  // Relationships
-  team         Team              @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  participants GameParticipant[]
-  payments     Payment[]
-  
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
+  id                            String         @id @default(dbgenerated("(gen_random_uuid())::text"))
+  homeTeamId                    String?
+  awayTeamId                    String?
+  homeTeamName                  String
+  awayTeamName                  String
+  homeScore                     Int            @default(0)
+  awayScore                     Int            @default(0)
+  status                        GameStatus     @default(SCHEDULED)
+  scheduledAt                   DateTime
+  startedAt                     DateTime?
+  finishedAt                    DateTime?
+  fieldId                       String?
+  fieldName                     String?
+  fieldAddress                  String?
+  maxPlayers                    Int            @default(22)
+  pricePerPlayer                Decimal?       @db.Decimal(10, 2)
+  duration                      Int?           @default(90)
+  homeFormation                 Formation?     @default(F_4_4_2)
+  awayFormation                 Formation?     @default(F_4_4_2)
+  organizerId                   String
+  description                   String?
+  isPrivate                     Boolean        @default(false)
+  createdAt                     DateTime       @default(now())
+  updatedAt                     DateTime       @default(now()) @updatedAt
+  game_events                   game_events[]
+  game_players                  game_players[]
+  teams_games_awayTeamIdToteams Team?          @relation("games_awayTeamIdToteams", fields: [awayTeamId], references: [id], onUpdate: NoAction)
+  teams_games_homeTeamIdToteams Team?          @relation("games_homeTeamIdToteams", fields: [homeTeamId], references: [id], onUpdate: NoAction)
+  users                         User           @relation(fields: [organizerId], references: [id], onUpdate: NoAction)
+  offers                        offers[]
+  payments                      Payment[]
 
+  @@index([awayTeamId])
+  @@index([homeTeamId])
+  @@index([organizerId])
+  @@index([scheduledAt])
+  @@index([status])
   @@map("games")
+}
+
+model Payment {
+  id                    String         @id @default(dbgenerated("(gen_random_uuid())::text"))
+  userId                String
+  type                  PaymentType
+  status                PaymentStatus  @default(PENDING)
+  method                PaymentMethod?
+  amount                Decimal        @db.Decimal(10, 2)
+  fee                   Decimal?       @default(0) @db.Decimal(10, 2)
+  netAmount             Decimal?       @db.Decimal(10, 2)
+  currency              String         @default("BRL")
+  gameId                String?
+  teamId                String?
+  stripePaymentIntentId String?
+  stripeChargeId        String?
+  stripeRefundId        String?
+  pixCode               String?
+  pixQrCode             String?
+  pixExpiresAt          DateTime?
+  boletoCode            String?
+  boletoUrl             String?
+  boletoExpiresAt       DateTime?
+  description           String
+  receiptUrl            String?
+  paidAt                DateTime?
+  refundedAt            DateTime?
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @default(now()) @updatedAt
+  game                  Game?          @relation(fields: [gameId], references: [id], onUpdate: NoAction)
+  teams                 Team?          @relation(fields: [teamId], references: [id], onUpdate: NoAction)
+  user                  User           @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([createdAt])
+  @@index([status])
+  @@index([stripePaymentIntentId])
+  @@index([type])
+  @@index([userId])
+  @@map("payments")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model game_events {
+  id                                                       String        @id @default(dbgenerated("(gen_random_uuid())::text"))
+  gameId                                                   String
+  type                                                     GameEventType
+  minute                                                   Int
+  addedTime                                                Int?          @default(0)
+  playerId                                                 String?
+  playerName                                               String
+  secondaryPlayerId                                        String?
+  secondaryPlayerName                                      String?
+  team                                                     String
+  description                                              String?
+  createdAt                                                DateTime      @default(now())
+  games                                                    Game          @relation(fields: [gameId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  game_players_game_events_playerIdTogame_players          game_players? @relation("game_events_playerIdTogame_players", fields: [playerId], references: [id], onUpdate: NoAction)
+  game_players_game_events_secondaryPlayerIdTogame_players game_players? @relation("game_events_secondaryPlayerIdTogame_players", fields: [secondaryPlayerId], references: [id], onUpdate: NoAction)
+
+  @@index([gameId])
+  @@index([minute])
+  @@index([playerId])
+  @@index([type])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model game_players {
+  id                                                      String          @id @default(dbgenerated("(gen_random_uuid())::text"))
+  gameId                                                  String
+  userId                                                  String
+  team                                                    String
+  position                                                PlayerPosition?
+  shirtNumber                                             Int?
+  isStarter                                               Boolean         @default(false)
+  isCaptain                                               Boolean         @default(false)
+  confirmedAt                                             DateTime?
+  paidAt                                                  DateTime?
+  paymentId                                               String?
+  goals                                                   Int             @default(0)
+  assists                                                 Int             @default(0)
+  yellowCards                                             Int             @default(0)
+  redCards                                                Int             @default(0)
+  minutesPlayed                                           Int?            @default(0)
+  rating                                                  Decimal?        @db.Decimal(3, 1)
+  createdAt                                               DateTime        @default(now())
+  updatedAt                                               DateTime        @default(now())
+  game_events_game_events_playerIdTogame_players          game_events[]   @relation("game_events_playerIdTogame_players")
+  game_events_game_events_secondaryPlayerIdTogame_players game_events[]   @relation("game_events_secondaryPlayerIdTogame_players")
+  games                                                   Game            @relation(fields: [gameId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users                                                   User            @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([gameId, team, shirtNumber])
+  @@unique([gameId, userId])
+  @@index([gameId])
+  @@index([team])
+  @@index([userId])
+}
+
+model offers {
+  id                             String      @id @default(dbgenerated("(gen_random_uuid())::text"))
+  type                           OfferType
+  status                         OfferStatus @default(PENDING)
+  toUserId                       String
+  fromUserId                     String
+  fromUserName                   String
+  gameId                         String?
+  teamId                         String?
+  message                        String?
+  priceOffer                     Decimal?    @db.Decimal(10, 2)
+  expiresAt                      DateTime?
+  respondedAt                    DateTime?
+  responseMessage                String?
+  createdAt                      DateTime    @default(now())
+  updatedAt                      DateTime    @default(now())
+  users_offers_fromUserIdTousers User        @relation("offers_fromUserIdTousers", fields: [fromUserId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  games                          Game?       @relation(fields: [gameId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  teams                          Team?       @relation(fields: [teamId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_offers_toUserIdTousers   User        @relation("offers_toUserIdTousers", fields: [toUserId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([fromUserId])
+  @@index([status])
+  @@index([toUserId])
+  @@index([type])
+}
+
+model player_profiles {
+  id              String             @id
+  userId          String             @unique
+  positions       PlayerPosition[]
+  pricePerGame    Decimal?           @db.Decimal(10, 2)
+  gamesPlayed     Int                @default(0)
+  strengths       String[]
+  weaknesses      String[]
+  availability    PlayerAvailability @default(AVAILABLE)
+  verified        Boolean            @default(false)
+  overallRating   Decimal?           @db.Decimal(3, 1)
+  technicalRating Decimal?           @db.Decimal(3, 1)
+  tacticalRating  Decimal?           @db.Decimal(3, 1)
+  physicalRating  Decimal?           @db.Decimal(3, 1)
+  mentalRating    Decimal?           @db.Decimal(3, 1)
+  totalReviews    Int                @default(0)
+  latitude        Decimal?           @db.Decimal(10, 8)
+  longitude       Decimal?           @db.Decimal(11, 8)
+  city            String?
+  state           String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime
+  users           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model player_stats_history {
+  id                 String   @id @default(dbgenerated("(gen_random_uuid())::text"))
+  userId             String
+  month              Int
+  year               Int
+  gamesPlayed        Int      @default(0)
+  goals              Int      @default(0)
+  assists            Int      @default(0)
+  yellowCards        Int      @default(0)
+  redCards           Int      @default(0)
+  wins               Int      @default(0)
+  draws              Int      @default(0)
+  losses             Int      @default(0)
+  avgRating          Decimal? @db.Decimal(3, 1)
+  avgTechnicalRating Decimal? @db.Decimal(3, 1)
+  avgPhysicalRating  Decimal? @db.Decimal(3, 1)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @default(now())
+  users              User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([userId, month, year])
+  @@index([year, month], map: "player_stats_history_period_idx")
+  @@index([userId])
+}
+
+model privacy_settings {
+  id                  String   @id @default(dbgenerated("(gen_random_uuid())::text"))
+  userId              String   @unique
+  receiveInvites      Boolean  @default(true)
+  showInMarketplace   Boolean  @default(true)
+  showPublicStats     Boolean  @default(true)
+  allowDirectMessages Boolean  @default(true)
+  showOnlineStatus    Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @default(now())
+  users               User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model stripe_accounts {
+  id                  String   @id
+  userId              String   @unique
+  stripeAccountId     String   @unique
+  status              String   @default("pending")
+  chargesEnabled      Boolean  @default(false)
+  payoutsEnabled      Boolean  @default(false)
+  detailsSubmitted    Boolean  @default(false)
+  requiresInformation String[]
+  country             String   @default("BR")
+  businessType        String   @default("individual")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime
+  users               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum UserRole {
+  PLAYER
+  FIELD_OWNER
+  ADMIN
 }
 
 enum GameStatus {
   SCHEDULED
-  CONFIRMED
+  LIVE
+  FINISHED
   CANCELLED
-  COMPLETED
-}
-
-// Game participation
-model GameParticipant {
-  id           String              @id @default(cuid())
-  gameId       String
-  userId       String
-  status       ParticipationStatus @default(PENDING)
-  confirmedAt  DateTime?
-  
-  // Relationships
-  game         Game                @relation(fields: [gameId], references: [id], onDelete: Cascade)
-  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  @@unique([gameId, userId])
-  @@map("game_participants")
-}
-
-enum ParticipationStatus {
-  PENDING
-  CONFIRMED
-  DECLINED
-  NO_SHOW
-}
-
-// Payment model
-model Payment {
-  id                     String        @id @default(cuid())
-  gameId                 String
-  userId                 String
-  amount                 Int           // cents
-  status                 PaymentStatus @default(PENDING)
-  stripePaymentIntentId  String?       @unique
-  
-  // Relationships
-  game                   Game          @relation(fields: [gameId], references: [id], onDelete: Restrict)
-  user                   User          @relation(fields: [userId], references: [id], onDelete: Restrict)
-  
-  createdAt              DateTime      @default(now())
-  updatedAt              DateTime      @updatedAt
-
-  @@map("payments")
 }
 
 enum PaymentStatus {
   PENDING
-  CONFIRMED
+  PROCESSING
+  COMPLETED
   FAILED
   REFUNDED
+  CANCELLED
+}
+
+enum Formation {
+  F_4_4_2 @map("4-4-2")
+  F_4_3_3 @map("4-3-3")
+  F_3_5_2 @map("3-5-2")
+  F_5_3_2 @map("5-3-2")
+  F_4_2_3_1 @map("4-2-3-1")
+  F_3_4_3 @map("3-4-3")
+  F_5_4_1 @map("5-4-1")
+}
+
+enum GameEventType {
+  GOAL
+  YELLOW_CARD
+  RED_CARD
+  SUBSTITUTION
+  INJURY
+  PENALTY_SCORED
+  PENALTY_MISSED
+  OWN_GOAL
+}
+
+enum OfferStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+enum OfferType {
+  GAME_INVITE
+  TEAM_INVITE
+  MERCADO_OFFER
+}
+
+enum PaymentMethod {
+  CREDIT_CARD
+  DEBIT_CARD
+  PIX
+  BOLETO
+}
+
+enum PaymentType {
+  GAME
+  SUBSCRIPTION
+  TOURNAMENT
+  TEAM_FEE
+}
+
+enum PlayerAvailability {
+  AVAILABLE
+  BUSY
+  UNAVAILABLE
+}
+
+enum PlayerPosition {
+  GOLEIRO
+  ZAGUEIRO
+  LATERAL
+  MEIA
+  ATACANTE
 }
