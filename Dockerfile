@@ -75,6 +75,9 @@ COPY --chown=kigolasso:nodejs docker-entrypoint.sh ./
 # Make entrypoint executable
 RUN chmod +x docker-entrypoint.sh
 
+# Create logs directory with proper permissions
+RUN mkdir -p /app/logs && chown -R kigolasso:nodejs /app/logs
+
 # Set environment
 ENV NODE_ENV=production
 ENV PORT=3000
