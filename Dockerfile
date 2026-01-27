@@ -54,8 +54,8 @@ FROM node:20-alpine AS runner
 
 WORKDIR /app
 
-# Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init openssl
+# Install dumb-init for proper signal handling and wget for healthcheck
+RUN apk add --no-cache dumb-init openssl wget
 
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs && \
@@ -85,9 +85,9 @@ EXPOSE 3000
 # Switch to non-root user
 USER kigolasso
 
-# Health check
+# Health check (using wget as required by Coolify)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
 
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
